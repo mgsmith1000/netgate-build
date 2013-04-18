@@ -1,0 +1,5 @@
+#!/bin/bash
+
+  sleep 2
+  sudo dd if=$1 bs=128k of=/dev/sde
+

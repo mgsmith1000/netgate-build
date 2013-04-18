@@ -1,0 +1,63 @@
+#!/bin/bash
+
+BLOCKSIZE=1k
+IMG_FILE=$1
+declare -a DEVICES=(sdb sdc sdd sde)
+declare -a OUT
+declare -a PIDS
+
+function clean_up {
+	kill -9 ${PIDS[@]} >/dev/null 2>&1
+	rm -f ${OUT[@]}
+	exit $1
+}
+
+trap clean_up INT
+
+START_TIME=`date '+%s'`
+MAX_RUN_TIME=1800
+
+I=0
+for DEV in ${DEVICES[@]}; do
+	OUT[$I]="/tmp/$DEV.$$.out"
+	DDCMD="/bin/dd if=$IMG_FILE of=/dev/$DEV bs=$BLOCKSIZE"
+	$DDCMD >${OUT[$I]} 2>&1 &
+	PIDS[$I]=$!
+	I=`expr $I + 1`
+done
+
+NUMDEVICES=$I
+COPYDONE="n"
+
+while [ "$COPYDONE" = "n" ];
+do
+	COPYDONE="y"
+	sleep 30
+
+	# see if we've been running for too long
+	CURR_TIME=`date '+%s'`
+	RUN_TIME=`expr $CURR_TIME - $START_TIME`
+	echo "Run time: $RUN_TIME seconds"
+	if [ $RUN_TIME -ge $MAX_RUN_TIME ]; then
+		echo "Script has been running longer than $MAX_RUN_TIME seconds - terminating copies"
+		clean_up 1
+	fi
+
+	# check status of dd processes & display
+	for ((J=0; J < I ; J++)); do
+		echo -n "Device `expr $J + 1`: "
+		kill -USR1 ${PIDS[$J]} >/dev/null 2>&1
+		if [ $? -eq 0 ]; then
+			COPYDONE="n"
+		fi
+		PROGRESS=`tail -1 ${OUT[$J]}`
+		if [ -n "$PROGRESS" ]; then
+			echo -n "$PROGRESS"
+		fi
+		echo ""
+	done
+done
+
+echo "All copies completed - cleaning up and exiting"
+clean_up 0
+

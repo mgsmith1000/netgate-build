@@ -1,0 +1,11 @@
+#!/bin/bash
+
+  sleep 2
+  sudo dd if=$1 bs=128k of=/dev/sdc &
+  sleep 2
+  sudo dd if=$1 bs=128k of=/dev/sdg &
+  sleep 2
+  sudo dd if=$1 bs=128k of=/dev/sdk &
+  sleep 2
+  sudo dd if=$1 bs=128k of=/dev/sdo
+
